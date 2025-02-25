@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Container,
   Card,
@@ -119,6 +119,11 @@ const SimuladorResultados = () => {
     }
   ];
 
+  useEffect(() => {
+    console.log(empresaSelecionada); 
+  }, [empresaSelecionada]);
+
+
 
   const calcularPFAjustado = (pf18, icms) => (pf18 * 0.82) / (1 - icms / 100);
   const calcularPFRepasse = (pf18, repasse) => pf18 - (pf18 * repasse / 100);
@@ -169,8 +174,8 @@ const SimuladorResultados = () => {
             value: empresaSelecionada?.lucroBruto !== undefined ? `R$ ${empresaSelecionada.lucroBruto.toFixed(2)}` : "R$ 0,00"
           },
           {
-            value: empresaSelecionada?.receitaBruta !== undefined || empresaSelecionada?.lucroBruto !== undefined ? `${((empresaSelecionada.lucroBruto / empresaSelecionada.receitaBruta) * 100).toFixed(2)}%` : "0,00%",
             label: "Margem Bruta (%)",
+            value: empresaSelecionada?.receitaBruta !== undefined || empresaSelecionada?.lucroBruto !== undefined ? `${((empresaSelecionada.lucroBruto / empresaSelecionada.receitaBruta) * 100).toFixed(2)}%` : "0,00%",
           },
           {
             label: "CMV (R$)",
@@ -234,33 +239,49 @@ const SimuladorResultados = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {empresaSelecionada && (
-                  <TableRow key={empresaSelecionada.id}>
-                    <TableCell>{empresaSelecionada.empresa}</TableCell>
-                    <TableCell>{empresaSelecionada.grupoMarca}</TableCell>
-                    <TableCell>{empresaSelecionada.item}</TableCell>
-                    <TableCell>{empresaSelecionada.pf.toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.icms + "%"}</TableCell>
-                    <TableCell>{calcularPFAjustado(empresaSelecionada.pf, empresaSelecionada.icms).toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.repasse.toFixed(2) + "%"}</TableCell>
-                    <TableCell>{calcularPFRepasse(empresaSelecionada.pf, empresaSelecionada.repasse).toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.desconto1 + "%"}</TableCell>
-                    <TableCell>{calcularCustoFinal(calcularPFRepasse(empresaSelecionada.pf, empresaSelecionada.repasse), empresaSelecionada.desconto1).toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.icmsCompra + "%"}</TableCell>
-                    <TableCell>{calcularCustoLiquido(calcularCustoFinal(calcularPFRepasse(empresaSelecionada.pf, empresaSelecionada.repasse), empresaSelecionada.desconto1), empresaSelecionada.icmsCompra).toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.trib + "%"}</TableCell>
-                    <TableCell>{empresaSelecionada.quant}</TableCell>
-                    <TableCell>{calcularPreco(calcularPFAjustado(empresaSelecionada.pf, empresaSelecionada.icms), empresaSelecionada.desconto2).toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.desconto2 + "%"}</TableCell>
-                    <TableCell>{calcularRB(calcularPreco(calcularPFAjustado(empresaSelecionada.pf, empresaSelecionada.icms), empresaSelecionada.desconto2), empresaSelecionada.quant).toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.impostos + "%"}</TableCell>
-                    <TableCell>{calcularRL(calcularRB(calcularPreco(calcularPFAjustado(empresaSelecionada.pf, empresaSelecionada.icms), empresaSelecionada.desconto2), empresaSelecionada.quant), empresaSelecionada.impostos).toFixed(2)}</TableCell>
-                    <TableCell>{calcularMB(empresaSelecionada.lucroBruto, calcularRL(calcularRB(calcularPreco(calcularPFAjustado(empresaSelecionada.pf, empresaSelecionada.icms), empresaSelecionada.desconto2), empresaSelecionada.quant), empresaSelecionada.impostos))}</TableCell>
-                    <TableCell>{calcularLB(calcularRL(calcularRB(calcularPreco(calcularPFAjustado(empresaSelecionada.pf, empresaSelecionada.icms), empresaSelecionada.desconto2), empresaSelecionada.quant), empresaSelecionada.impostos), calcularCMV(calcularCustoLiquido(calcularCustoFinal(calcularPFRepasse(empresaSelecionada.pf, empresaSelecionada.repasse), empresaSelecionada.desconto1), empresaSelecionada.icmsCompra), empresaSelecionada.quant), empresaSelecionada.bf).toFixed(2)}</TableCell>
-                    <TableCell>{empresaSelecionada.bf + "%"}</TableCell>
-                    <TableCell>{calcularCMV(calcularCustoLiquido(calcularCustoFinal(calcularPFRepasse(empresaSelecionada.pf, empresaSelecionada.repasse), empresaSelecionada.desconto1), empresaSelecionada.icmsCompra), empresaSelecionada.quant).toFixed(2)}</TableCell>
-                  </TableRow>
-                )}
+
+                {empresaSelecionada &&
+                  (Array.isArray(empresaSelecionada) ? empresaSelecionada : [empresaSelecionada]).map((empresa) => {
+                    const pfAjustado = calcularPFAjustado(empresa.pf, empresa.icms);
+                    const pfRepasse = calcularPFRepasse(empresa.pf, empresa.repasse);
+                    const custoFinal = calcularCustoFinal(pfRepasse, empresa.desconto1);
+                    const custoLiquido = calcularCustoLiquido(custoFinal, empresa.icmsCompra);
+                    const preco = calcularPreco(pfAjustado, empresa.desconto2);
+                    const rb = calcularRB(preco, empresa.quant);
+                    const rl = calcularRL(rb, empresa.impostos);
+                    const cmv = calcularCMV(custoLiquido, empresa.quant);
+                    const lb = calcularLB(rl, cmv, empresa.bf);
+                    const mb = calcularMB(lb, rl);
+
+                    return (
+                      <TableRow key={empresa.id}>
+                        <TableCell>{empresa.empresa}</TableCell>
+                        <TableCell>{empresa.grupoMarca}</TableCell>
+                        <TableCell>{empresa.item}</TableCell>
+                        <TableCell>{empresa.pf.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.icms + "%"}</TableCell>
+                        <TableCell>{pfAjustado.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.repasse.toFixed(2) + "%"}</TableCell>
+                        <TableCell>{pfRepasse.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.desconto1 + "%"}</TableCell>
+                        <TableCell>{custoFinal.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.icmsCompra + "%"}</TableCell>
+                        <TableCell>{custoLiquido.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.trib + "%"}</TableCell>
+                        <TableCell>{empresa.quant}</TableCell>
+                        <TableCell>{preco.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.desconto2 + "%"}</TableCell>
+                        <TableCell>{rb.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.impostos + "%"}</TableCell>
+                        <TableCell>{rl.toFixed(2)}</TableCell>
+                        <TableCell>{mb}</TableCell>
+                        <TableCell>{lb.toFixed(2)}</TableCell>
+                        <TableCell>{empresa.bf + "%"}</TableCell>
+                        <TableCell>{cmv.toFixed(2)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+
               </TableBody>
             </Table>
           </Box>
